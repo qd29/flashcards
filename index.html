@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Flashcards" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Flashcards</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f4f5;
+      --surface: #ffffff;
+      --surface-2: #fafafa;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #d4d4d8;
+      --accent: #0f172a;
+      --accent-text: #ffffff;
+      --shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+      --card-shadow: 0 18px 44px rgba(15, 23, 42, 0.10);
+      --focus: rgba(59, 130, 246, 0.28);
+      --error-bg: rgba(220, 38, 38, 0.08);
+      --error-border: rgba(220, 38, 38, 0.16);
+      --error-text: #b91c1c;
+      --gap: 8px;
+      --radius: 18px;
+      --card-radius: 26px;
+      --button-height: 44px;
+      --controls-height: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-text-size-adjust: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+      min-width: 0;
+      min-height: 0;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-right: max(8px, env(safe-area-inset-right));
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      padding-left: max(8px, env(safe-area-inset-left));
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: var(--gap);
+      align-items: stretch;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+
+    button,
+    select,
+    .file-button {
+      appearance: none;
+      min-width: 0;
+      min-height: var(--button-height);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+      padding: 0 14px;
+      box-shadow: var(--shadow);
+      touch-action: manipulation;
+    }
+
+    button,
+    .file-button {
+      cursor: pointer;
+    }
+
+    .file-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    select {
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    .file-button:focus-visible,
+    .card:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
+    }
+
+    .message {
+      display: none;
+      flex: 0 0 auto;
+      min-width: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--muted);
+      line-height: 1.35;
+      box-shadow: var(--shadow);
+      font-size: 0.94rem;
+    }
+
+    .message.visible {
+      display: block;
+    }
+
+    .message.error {
+      border-color: var(--error-border);
+      background: var(--error-bg);
+      color: var(--error-text);
+    }
+
+    .empty,
+    .study {
+      min-width: 0;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      border: 1px dashed var(--border);
+      border-radius: var(--card-radius);
+      background: rgba(255, 255, 255, 0.45);
+      color: var(--muted);
+      text-align: center;
+      padding: 24px;
+      font-weight: 600;
+    }
+
+    .study {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+      overflow: hidden;
+    }
+
+    .meta {
+      min-width: 0;
+      min-height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 2px;
+      flex: 0 0 auto;
+    }
+
+    .deck-name,
+    .card-counter {
+      min-width: 0;
+      font-size: 0.92rem;
+      font-weight: 800;
+      line-height: 1.2;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .deck-name {
+      color: var(--text);
+      padding-right: 8px;
+    }
+
+    .card {
+      width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      background: linear-gradient(180deg, var(--surface), var(--surface-2));
+      box-shadow: var(--card-shadow);
+      padding: 14px;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: pan-y;
+    }
+
+    .side-label {
+      align-self: flex-start;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.7);
+      flex: 0 0 auto;
+    }
+
+    .card-text-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 10px 6px 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .card-text {
+      width: min(100%, 1100px);
+      margin: 0 auto;
+      text-align: center;
+      font-size: clamp(1.8rem, 4.4vw, 4rem);
+      line-height: 1.18;
+      font-weight: 500;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--gap);
+      min-width: 0;
+      flex: 0 0 auto;
+    }
+
+    .controls button {
+      min-height: var(--controls-height);
+    }
+
+    button:disabled,
+    select:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 540px) {
+      :root {
+        --gap: 6px;
+        --button-height: 42px;
+        --controls-height: 46px;
+      }
+
+      .app {
+        padding-top: max(6px, env(safe-area-inset-top));
+        padding-right: max(6px, env(safe-area-inset-right));
+        padding-bottom: max(6px, env(safe-area-inset-bottom));
+        padding-left: max(6px, env(safe-area-inset-left));
+      }
+
+      button,
+      select,
+      .file-button {
+        border-radius: 12px;
+        padding: 0 12px;
+        font-size: 0.96rem;
+      }
+
+      .card {
+        padding: 12px;
+        border-radius: 22px;
+      }
+
+      .card-text {
+        font-size: clamp(1.55rem, 6.3vw, 2.8rem);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar" aria-label="Controls">
+      <label class="file-button" for="deckInput">Load</label>
+      <input id="deckInput" class="hidden-input" type="file" accept=".json,application/json" multiple />
+
+      <select id="deckSelect" aria-label="Deck selection">
+        <option value="">No decks</option>
+      </select>
+
+      <button id="shuffleButton" type="button">Shuffle</button>
+      <button id="clearButton" type="button">Clear</button>
+    </section>
+
+    <div id="message" class="message" aria-live="polite"></div>
+
+    <section id="emptyState" class="empty">No cards loaded.</section>
+
+    <section id="studyArea" class="study" hidden>
+      <div class="meta">
+        <span id="deckName" class="deck-name"></span>
+        <span id="cardCounter" class="card-counter"></span>
+      </div>
+
+      <button id="cardButton" class="card" type="button" aria-label="Flashcard">
+        <div id="sideLabel" class="side-label">Front</div>
+        <div class="card-text-wrap">
+          <div id="cardText" class="card-text"></div>
+        </div>
+      </button>
+
+      <div class="controls">
+        <button id="prevButton" type="button">Prev</button>
+        <button id="flipButton" class="primary" type="button">Flip</button>
+        <button id="nextButton" type="button">Next</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const ALL_DECKS_VALUE = '__all__';
+
+    const state = {
+      decks: [],
+      sourceValue: ALL_DECKS_VALUE,
+      activeCards: [],
+      cardIndex: 0,
+      showingFront: true,
+      touchStartX: null,
+      touchStartY: null,
+      ignoreNextCardClick: false
+    };
+
+    const deckInput = document.getElementById('deckInput');
+    const deckSelect = document.getElementById('deckSelect');
+    const shuffleButton = document.getElementById('shuffleButton');
+    const clearButton = document.getElementById('clearButton');
+    const message = document.getElementById('message');
+    const emptyState = document.getElementById('emptyState');
+    const studyArea = document.getElementById('studyArea');
+    const deckName = document.getElementById('deckName');
+    const cardCounter = document.getElementById('cardCounter');
+    const cardButton = document.getElementById('cardButton');
+    const sideLabel = document.getElementById('sideLabel');
+    const cardText = document.getElementById('cardText');
+    const prevButton = document.getElementById('prevButton');
+    const flipButton = document.getElementById('flipButton');
+    const nextButton = document.getElementById('nextButton');
+
+    function makeDeckId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'deck-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function safeTitleFromFilename(filename) {
+      return (filename || 'Untitled Deck')
+        .replace(/\.json$/i, '')
+        .replace(/[_-]+/g, ' ')
+        .trim() || 'Untitled Deck';
+    }
+
+    function normalizeCard(rawCard, deckTitle) {
+      if (!rawCard || typeof rawCard !== 'object' || Array.isArray(rawCard)) {
+        return null;
+      }
+
+      const front = typeof rawCard.front === 'string' ? rawCard.front.trim() : '';
+      const back = typeof rawCard.back === 'string' ? rawCard.back.trim() : '';
+
+      if (!front || !back) {
+        return null;
+      }
+
+      return {
+        front,
+        back,
+        deckTitle
+      };
+    }
+
+    function normalizeDeck(rawDeck, fallbackTitle) {
+      if (!rawDeck || typeof rawDeck !== 'object' || Array.isArray(rawDeck)) {
+        return null;
+      }
+
+      const title = typeof rawDeck.title === 'string' && rawDeck.title.trim()
+        ? rawDeck.title.trim()
+        : fallbackTitle;
+
+      const cards = Array.isArray(rawDeck.cards)
+        ? rawDeck.cards.map(function(card) {
+            return normalizeCard(card, title);
+          }).filter(Boolean)
+        : [];
+
+      if (!cards.length) {
+        return null;
+      }
+
+      return {
+        id: makeDeckId(),
+        title,
+        cards
+      };
+    }
+
+    function extractDecks(payload, filename) {
+      const fallbackTitle = safeTitleFromFilename(filename);
+
+      if (Array.isArray(payload)) {
+        const looksLikeCardArray = payload.every(function(item) {
+          return item && typeof item === 'object' && !Array.isArray(item) && ('front' in item || 'back' in item);
+        });
+
+        if (looksLikeCardArray) {
+          const deck = normalizeDeck({ title: fallbackTitle, cards: payload }, fallbackTitle);
+          return deck ? [deck] : [];
+        }
+
+        return payload.map(function(item, index) {
+          return normalizeDeck(item, fallbackTitle + ' ' + (index + 1));
+        }).filter(Boolean);
+      }
+
+      if (payload && typeof payload === 'object') {
+        if (Array.isArray(payload.decks)) {
+          return payload.decks.map(function(item, index) {
+            return normalizeDeck(item, fallbackTitle + ' ' + (index + 1));
+          }).filter(Boolean);
+        }
+
+        const deck = normalizeDeck(payload, fallbackTitle);
+        return deck ? [deck] : [];
+      }
+
+      return [];
+    }
+
+    function readFileAsText(file) {
+      return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          resolve(String(event.target && event.target.result ? event.target.result : ''));
+        };
+        reader.onerror = function() {
+          reject(new Error('Could not read ' + file.name));
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    function shuffleArray(items) {
+      const copy = items.slice();
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = temp;
+      }
+      return copy;
+    }
+
+    function setMessage(text, isError) {
+      const hasText = typeof text === 'string' && text.trim();
+      message.textContent = hasText ? text.trim() : '';
+      message.classList.toggle('visible', Boolean(hasText));
+      message.classList.toggle('error', Boolean(hasText && isError));
+    }
+
+    function totalCardCount() {
+      return state.decks.reduce(function(total, deck) {
+        return total + deck.cards.length;
+      }, 0);
+    }
+
+    function rebuildDeckSelect() {
+      const previousValue = state.sourceValue;
+      deckSelect.innerHTML = '';
+
+      if (!state.decks.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No decks';
+        deckSelect.appendChild(option);
+        state.sourceValue = ALL_DECKS_VALUE;
+        deckSelect.value = '';
+        return;
+      }
+
+      if (state.decks.length > 1) {
+        const allOption = document.createElement('option');
+        allOption.value = ALL_DECKS_VALUE;
+        allOption.textContent = 'All decks (' + totalCardCount() + ')';
+        deckSelect.appendChild(allOption);
+      }
+
+      state.decks.forEach(function(deck) {
+        const option = document.createElement('option');
+        option.value = deck.id;
+        option.textContent = deck.title + ' (' + deck.cards.length + ')';
+        deckSelect.appendChild(option);
+      });
+
+      const valueStillExists = state.decks.some(function(deck) {
+        return deck.id === previousValue;
+      });
+
+      if (previousValue === ALL_DECKS_VALUE && state.decks.length > 1) {
+        state.sourceValue = ALL_DECKS_VALUE;
+      } else if (valueStillExists) {
+        state.sourceValue = previousValue;
+      } else {
+        state.sourceValue = state.decks.length > 1 ? ALL_DECKS_VALUE : state.decks[0].id;
+      }
+
+      deckSelect.value = state.sourceValue;
+    }
+
+    function selectedDecks() {
+      if (state.sourceValue === ALL_DECKS_VALUE) {
+        return state.decks.slice();
+      }
+      return state.decks.filter(function(deck) {
+        return deck.id === state.sourceValue;
+      });
+    }
+
+    function rebuildActiveCards(shouldShuffle) {
+      const cards = [];
+      selectedDecks().forEach(function(deck) {
+        deck.cards.forEach(function(card) {
+          cards.push({
+            front: card.front,
+            back: card.back,
+            deckTitle: deck.title
+          });
+        });
+      });
+
+      state.activeCards = shouldShuffle ? shuffleArray(cards) : cards;
+      state.cardIndex = 0;
+      state.showingFront = true;
+    }
+
+    function currentCard() {
+      return state.activeCards.length ? state.activeCards[state.cardIndex] : null;
+    }
+
+    function currentDeckLabel(card) {
+      if (!card) {
+        return '';
+      }
+
+      if (state.sourceValue === ALL_DECKS_VALUE && state.decks.length > 1) {
+        return card.deckTitle;
+      }
+
+      const decks = selectedDecks();
+      return decks.length ? decks[0].title : card.deckTitle;
+    }
+
+    function render() {
+      const hasCards = state.activeCards.length > 0;
+      const card = currentCard();
+
+      emptyState.hidden = hasCards;
+      studyArea.hidden = !hasCards;
+
+      const hasDecks = state.decks.length > 0;
+      deckSelect.disabled = !hasDecks;
+      shuffleButton.disabled = !hasCards;
+      clearButton.disabled = !hasDecks;
+      prevButton.disabled = !hasCards;
+      flipButton.disabled = !hasCards;
+      nextButton.disabled = !hasCards;
+      cardButton.disabled = !hasCards;
+
+      if (!hasCards || !card) {
+        deckName.textContent = '';
+        cardCounter.textContent = '';
+        sideLabel.textContent = 'Front';
+        cardText.textContent = '';
+        return;
+      }
+
+      deckName.textContent = currentDeckLabel(card);
+      cardCounter.textContent = (state.cardIndex + 1) + ' / ' + state.activeCards.length;
+      sideLabel.textContent = state.showingFront ? 'Front' : 'Back';
+      cardText.textContent = state.showingFront ? card.front : card.back;
+    }
+
+    function changeCard(delta) {
+      if (!state.activeCards.length) {
+        return;
+      }
+
+      const total = state.activeCards.length;
+      state.cardIndex = (state.cardIndex + delta + total) % total;
+      state.showingFront = true;
+      render();
+    }
+
+    function flipCard() {
+      if (!currentCard()) {
+        return;
+      }
+
+      state.showingFront = !state.showingFront;
+      render();
+    }
+
+    function clearDecks() {
+      state.decks = [];
+      state.sourceValue = ALL_DECKS_VALUE;
+      state.activeCards = [];
+      state.cardIndex = 0;
+      state.showingFront = true;
+      deckInput.value = '';
+      rebuildDeckSelect();
+      setMessage('');
+      render();
+    }
+
+    async function loadDeckFiles(fileList) {
+      const files = Array.from(fileList || []);
+      if (!files.length) {
+        return;
+      }
+
+      const addedDecks = [];
+      const errors = [];
+
+      for (const file of files) {
+        try {
+          const text = await readFileAsText(file);
+          const parsed = JSON.parse(text);
+          const decks = extractDecks(parsed, file.name);
+
+          if (!decks.length) {
+            errors.push(file.name + ': no valid cards found');
+            continue;
+          }
+
+          addedDecks.push.apply(addedDecks, decks);
+        } catch (error) {
+          errors.push(file.name + ': ' + (error && error.message ? error.message : 'Invalid JSON'));
+        }
+      }
+
+      if (addedDecks.length) {
+        state.decks = state.decks.concat(addedDecks);
+        state.sourceValue = state.decks.length > 1 ? ALL_DECKS_VALUE : state.decks[0].id;
+        rebuildDeckSelect();
+        rebuildActiveCards(false);
+        render();
+      }
+
+      if (addedDecks.length && errors.length) {
+        setMessage('Loaded ' + addedDecks.length + ' deck' + (addedDecks.length === 1 ? '' : 's') + '. ' + errors.join(' · '), true);
+      } else if (errors.length) {
+        setMessage(errors.join(' · '), true);
+      } else {
+        setMessage('');
+      }
+
+      deckInput.value = '';
+    }
+
+    deckInput.addEventListener('change', function(event) {
+      loadDeckFiles(event.target.files);
+    });
+
+    deckSelect.addEventListener('change', function(event) {
+      state.sourceValue = event.target.value || ALL_DECKS_VALUE;
+      rebuildActiveCards(false);
+      render();
+    });
+
+    shuffleButton.addEventListener('click', function() {
+      rebuildActiveCards(true);
+      render();
+    });
+
+    clearButton.addEventListener('click', clearDecks);
+    prevButton.addEventListener('click', function() { changeCard(-1); });
+    nextButton.addEventListener('click', function() { changeCard(1); });
+    flipButton.addEventListener('click', flipCard);
+
+    cardButton.addEventListener('click', function() {
+      if (state.ignoreNextCardClick) {
+        state.ignoreNextCardClick = false;
+        return;
+      }
+      flipCard();
+    });
+
+    cardButton.addEventListener('touchstart', function(event) {
+      if (!currentCard()) {
+        return;
+      }
+      const touch = event.changedTouches[0];
+      state.touchStartX = touch.clientX;
+      state.touchStartY = touch.clientY;
+    }, { passive: true });
+
+    cardButton.addEventListener('touchend', function(event) {
+      if (state.touchStartX === null || state.touchStartY === null) {
+        return;
+      }
+
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - state.touchStartX;
+      const deltaY = touch.clientY - state.touchStartY;
+      state.touchStartX = null;
+      state.touchStartY = null;
+
+      if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+        return;
+      }
+
+      state.ignoreNextCardClick = true;
+
+      if (deltaX < 0) {
+        changeCard(1);
+      } else {
+        changeCard(-1);
+      }
+    }, { passive: true });
+
+    document.addEventListener('keydown', function(event) {
+      if (!currentCard()) {
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        changeCard(-1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        changeCard(1);
+      } else if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        flipCard();
+      }
+    });
+
+    rebuildDeckSelect();
+    render();
+  </script>
+</body>
+</html>
