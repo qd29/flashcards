@@ -374,7 +374,8 @@
       showingFront: true,
       touchStartX: null,
       touchStartY: null,
-      ignoreNextCardClick: false
+      suppressNextClick: false,
+      suppressClickTimer: null
     };
 
     const deckInput = document.getElementById('deckInput');
@@ -607,6 +608,17 @@
       return decks.length ? decks[0].title : card.deckTitle;
     }
 
+    function suppressGhostClick() {
+      state.suppressNextClick = true;
+      if (state.suppressClickTimer) {
+        window.clearTimeout(state.suppressClickTimer);
+      }
+      state.suppressClickTimer = window.setTimeout(function() {
+        state.suppressNextClick = false;
+        state.suppressClickTimer = null;
+      }, 450);
+    }
+
     function render() {
       const hasCards = state.activeCards.length > 0;
       const card = currentCard();
@@ -735,8 +747,12 @@
     flipButton.addEventListener('click', flipCard);
 
     cardButton.addEventListener('click', function() {
-      if (state.ignoreNextCardClick) {
-        state.ignoreNextCardClick = false;
+      if (state.suppressNextClick) {
+        state.suppressNextClick = false;
+        if (state.suppressClickTimer) {
+          window.clearTimeout(state.suppressClickTimer);
+          state.suppressClickTimer = null;
+        }
         return;
       }
       flipCard();
@@ -762,16 +778,34 @@
       state.touchStartX = null;
       state.touchStartY = null;
 
-      if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      const isSwipe = absX >= 50 && absX >= absY * 1.2;
+      const isTap = absX <= 12 && absY <= 12;
+
+      if (isSwipe) {
+        suppressGhostClick();
+        if (deltaX < 0) {
+          changeCard(1);
+        } else {
+          changeCard(-1);
+        }
         return;
       }
 
-      state.ignoreNextCardClick = true;
+      if (isTap) {
+        suppressGhostClick();
+        flipCard();
+      }
+    }, { passive: true });
 
-      if (deltaX < 0) {
-        changeCard(1);
-      } else {
-        changeCard(-1);
+    cardButton.addEventListener('touchcancel', function() {
+      state.touchStartX = null;
+      state.touchStartY = null;
+      state.suppressNextClick = false;
+      if (state.suppressClickTimer) {
+        window.clearTimeout(state.suppressClickTimer);
+        state.suppressClickTimer = null;
       }
     }, { passive: true });
 
