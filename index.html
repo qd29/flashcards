@@ -74,7 +74,7 @@
 
     .topbar {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
       gap: var(--gap);
       align-items: stretch;
       flex: 0 0 auto;
@@ -196,6 +196,15 @@
       flex: 0 0 auto;
     }
 
+    .meta-actions {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
     .deck-name,
     .card-counter {
       min-width: 0;
@@ -211,6 +220,22 @@
     .deck-name {
       color: var(--text);
       padding-right: 8px;
+    }
+
+    .mini-button {
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 800;
+      box-shadow: none;
+      flex: 0 0 auto;
+    }
+
+    .mini-button.active {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
     }
 
     .card {
@@ -313,6 +338,12 @@
         font-size: 0.96rem;
       }
 
+      .mini-button {
+        min-height: 32px;
+        padding: 0 10px;
+        font-size: 0.8rem;
+      }
+
       .card {
         padding: 12px;
         border-radius: 22px;
@@ -334,6 +365,7 @@
         <option value="">No decks</option>
       </select>
 
+      <button id="saveStateButton" type="button">Save</button>
       <button id="shuffleButton" type="button">Shuffle</button>
       <button id="clearButton" type="button">Clear</button>
     </section>
@@ -345,7 +377,10 @@
     <section id="studyArea" class="study" hidden>
       <div class="meta">
         <span id="deckName" class="deck-name"></span>
-        <span id="cardCounter" class="card-counter"></span>
+        <div class="meta-actions">
+          <button id="reviewToggleButton" class="mini-button" type="button" aria-pressed="false">Review</button>
+          <span id="cardCounter" class="card-counter"></span>
+        </div>
       </div>
 
       <button id="cardButton" class="card" type="button" aria-label="Flashcard">
@@ -365,6 +400,7 @@
 
   <script>
     const ALL_DECKS_VALUE = '__all__';
+    const REVIEW_STATE_SUFFIX = '-review-state.json';
 
     const state = {
       decks: [],
@@ -372,14 +408,17 @@
       activeCards: [],
       cardIndex: 0,
       showingFront: true,
+      reviewOnly: false,
       touchStartX: null,
       touchStartY: null,
       suppressNextClick: false,
-      suppressClickTimer: null
+      suppressClickTimer: null,
+      dirtySourceKeys: new Set()
     };
 
     const deckInput = document.getElementById('deckInput');
     const deckSelect = document.getElementById('deckSelect');
+    const saveStateButton = document.getElementById('saveStateButton');
     const shuffleButton = document.getElementById('shuffleButton');
     const clearButton = document.getElementById('clearButton');
     const message = document.getElementById('message');
@@ -387,6 +426,7 @@
     const studyArea = document.getElementById('studyArea');
     const deckName = document.getElementById('deckName');
     const cardCounter = document.getElementById('cardCounter');
+    const reviewToggleButton = document.getElementById('reviewToggleButton');
     const cardButton = document.getElementById('cardButton');
     const sideLabel = document.getElementById('sideLabel');
     const cardText = document.getElementById('cardText');
@@ -401,11 +441,189 @@
       return 'deck-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
     }
 
-    function safeTitleFromFilename(filename) {
-      return (filename || 'Untitled Deck')
-        .replace(/\.json$/i, '')
+    function hashString(input) {
+      let hash = 5381;
+      for (let i = 0; i < input.length; i += 1) {
+        hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
+      }
+      return (hash >>> 0).toString(16);
+    }
+
+    function stripJsonSuffix(name) {
+      return String(name || '').replace(/\.json$/i, '');
+    }
+
+    function stripReviewStateSuffix(name) {
+      return String(name || '').replace(/-review-state\.json$/i, '');
+    }
+
+    function isReviewStateFilename(name) {
+      return /-review-state\.json$/i.test(String(name || ''));
+    }
+
+    function getUrlBasename(urlLike) {
+      try {
+        const url = new URL(String(urlLike || ''), window.location.href);
+        const pieces = url.pathname.split('/');
+        return decodeURIComponent(pieces[pieces.length - 1] || '');
+      } catch (error) {
+        return String(urlLike || '');
+      }
+    }
+
+    function safeTitleFromSourceLabel(label) {
+      return stripJsonSuffix(getUrlBasename(label || 'Untitled Deck.json'))
         .replace(/[_-]+/g, ' ')
         .trim() || 'Untitled Deck';
+    }
+
+    function makeCardKey(front, back) {
+      return hashString(front + '\u241f' + back);
+    }
+
+    function makeSourceKey(sourceType, sourceName, sourceUrl) {
+      return sourceType + ':' + (sourceUrl || sourceName || makeDeckId());
+    }
+
+    function makeReviewStateFileName(sourceName) {
+      const base = stripJsonSuffix(sourceName || 'deck');
+      return (base || 'deck') + REVIEW_STATE_SUFFIX;
+    }
+
+    function makeReviewStateUrl(sourceUrl) {
+      try {
+        const url = new URL(sourceUrl, window.location.href);
+        const path = url.pathname;
+        url.pathname = /\.json$/i.test(path)
+          ? path.replace(/\.json$/i, REVIEW_STATE_SUFFIX)
+          : path + REVIEW_STATE_SUFFIX;
+        return url.toString();
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function makeSourceMeta(sourceType, sourceName, sourceUrl) {
+      const resolvedUrl = sourceUrl ? new URL(sourceUrl, window.location.href).toString() : '';
+      const resolvedName = sourceName || getUrlBasename(resolvedUrl) || 'Untitled Deck.json';
+      return {
+        sourceType: sourceType,
+        sourceName: resolvedName,
+        sourceUrl: resolvedUrl,
+        sourceKey: makeSourceKey(sourceType, resolvedName, resolvedUrl),
+        reviewStateName: makeReviewStateFileName(resolvedName),
+        reviewStateUrl: resolvedUrl ? makeReviewStateUrl(resolvedUrl) : ''
+      };
+    }
+
+    function parseReviewStatePayload(rawPayload) {
+      if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
+        return null;
+      }
+
+      if (Array.isArray(rawPayload.decks)) {
+        return rawPayload;
+      }
+
+      if (Array.isArray(rawPayload.needsReviewKeys) || Array.isArray(rawPayload.flags)) {
+        return {
+          version: 1,
+          type: 'flashcard-review-state',
+          decks: [{
+            title: typeof rawPayload.deckTitle === 'string' ? rawPayload.deckTitle.trim() : '',
+            needsReviewKeys: Array.isArray(rawPayload.needsReviewKeys) ? rawPayload.needsReviewKeys : null,
+            flags: Array.isArray(rawPayload.flags) ? rawPayload.flags : null
+          }]
+        };
+      }
+
+      return null;
+    }
+
+    function applyReviewEntryToDeck(deck, entry) {
+      if (!deck || !entry || typeof entry !== 'object') {
+        return false;
+      }
+
+      if (Array.isArray(entry.needsReviewKeys)) {
+        const reviewSet = new Set(entry.needsReviewKeys.filter(function(key) {
+          return typeof key === 'string' && key;
+        }));
+
+        deck.cards.forEach(function(card) {
+          card.needsReview = reviewSet.has(card.cardKey);
+        });
+        return true;
+      }
+
+      if (Array.isArray(entry.flags)) {
+        deck.cards.forEach(function(card, index) {
+          card.needsReview = typeof entry.flags[index] === 'boolean' ? entry.flags[index] : false;
+        });
+        return true;
+      }
+
+      return false;
+    }
+
+    function applyReviewStateBundleToDecks(decks, rawPayload) {
+      const payload = parseReviewStatePayload(rawPayload);
+      if (!payload || !Array.isArray(decks) || !decks.length) {
+        return false;
+      }
+
+      const entries = Array.isArray(payload.decks) ? payload.decks : [];
+      if (!entries.length) {
+        return false;
+      }
+
+      if (decks.length === 1 && entries.length === 1) {
+        return applyReviewEntryToDeck(decks[0], entries[0]);
+      }
+
+      const titleMap = new Map();
+      entries.forEach(function(entry) {
+        if (entry && typeof entry === 'object' && typeof entry.title === 'string' && entry.title.trim()) {
+          titleMap.set(entry.title.trim(), entry);
+        }
+      });
+
+      let applied = false;
+      decks.forEach(function(deck) {
+        const entry = titleMap.get(deck.title) || null;
+        if (entry) {
+          applied = applyReviewEntryToDeck(deck, entry) || applied;
+        }
+      });
+
+      return applied;
+    }
+
+    function buildReviewStatePayloadForSource(sourceKey) {
+      const decks = state.decks.filter(function(deck) {
+        return deck.sourceKey === sourceKey;
+      });
+
+      if (!decks.length) {
+        return null;
+      }
+
+      return {
+        version: 1,
+        type: 'flashcard-review-state',
+        sourceDeck: decks[0].sourceName || null,
+        generatedAt: new Date().toISOString(),
+        decks: decks.map(function(deck) {
+          return {
+            title: deck.title,
+            needsReviewKeys: deck.cards.filter(function(card) {
+              return Boolean(card.needsReview);
+            }).map(function(card) {
+              return card.cardKey;
+            })
+          };
+        })
+      };
     }
 
     function normalizeCard(rawCard, deckTitle) {
@@ -421,13 +639,15 @@
       }
 
       return {
-        front,
-        back,
-        deckTitle
+        front: front,
+        back: back,
+        deckTitle: deckTitle,
+        cardKey: makeCardKey(front, back),
+        needsReview: Boolean(rawCard.needsReview)
       };
     }
 
-    function normalizeDeck(rawDeck, fallbackTitle) {
+    function normalizeDeck(rawDeck, fallbackTitle, sourceMeta) {
       if (!rawDeck || typeof rawDeck !== 'object' || Array.isArray(rawDeck)) {
         return null;
       }
@@ -448,13 +668,19 @@
 
       return {
         id: makeDeckId(),
-        title,
-        cards
+        title: title,
+        cards: cards,
+        sourceType: sourceMeta.sourceType,
+        sourceName: sourceMeta.sourceName,
+        sourceUrl: sourceMeta.sourceUrl,
+        sourceKey: sourceMeta.sourceKey,
+        reviewStateName: sourceMeta.reviewStateName,
+        reviewStateUrl: sourceMeta.reviewStateUrl
       };
     }
 
-    function extractDecks(payload, filename) {
-      const fallbackTitle = safeTitleFromFilename(filename);
+    function extractDecks(payload, sourceMeta) {
+      const fallbackTitle = safeTitleFromSourceLabel(sourceMeta.sourceName || sourceMeta.sourceUrl);
 
       if (Array.isArray(payload)) {
         const looksLikeCardArray = payload.every(function(item) {
@@ -462,23 +688,23 @@
         });
 
         if (looksLikeCardArray) {
-          const deck = normalizeDeck({ title: fallbackTitle, cards: payload }, fallbackTitle);
+          const deck = normalizeDeck({ title: fallbackTitle, cards: payload }, fallbackTitle, sourceMeta);
           return deck ? [deck] : [];
         }
 
         return payload.map(function(item, index) {
-          return normalizeDeck(item, fallbackTitle + ' ' + (index + 1));
+          return normalizeDeck(item, fallbackTitle + ' ' + (index + 1), sourceMeta);
         }).filter(Boolean);
       }
 
       if (payload && typeof payload === 'object') {
         if (Array.isArray(payload.decks)) {
           return payload.decks.map(function(item, index) {
-            return normalizeDeck(item, fallbackTitle + ' ' + (index + 1));
+            return normalizeDeck(item, fallbackTitle + ' ' + (index + 1), sourceMeta);
           }).filter(Boolean);
         }
 
-        const deck = normalizeDeck(payload, fallbackTitle);
+        const deck = normalizeDeck(payload, fallbackTitle, sourceMeta);
         return deck ? [deck] : [];
       }
 
@@ -574,15 +800,36 @@
       });
     }
 
+    function hasAnyReviewCards(decks) {
+      return decks.some(function(deck) {
+        return deck.cards.some(function(card) {
+          return Boolean(card.needsReview);
+        });
+      });
+    }
+
+    function chooseStudyModeForCurrentSelection() {
+      const decks = selectedDecks();
+      if (!decks.length || !hasAnyReviewCards(decks)) {
+        state.reviewOnly = false;
+        return;
+      }
+
+      state.reviewOnly = window.confirm('Study only cards marked for review?\n\nOK = only review cards\nCancel = all cards');
+    }
+
     function rebuildActiveCards(shouldShuffle) {
       const cards = [];
       selectedDecks().forEach(function(deck) {
         deck.cards.forEach(function(card) {
-          cards.push({
-            front: card.front,
-            back: card.back,
-            deckTitle: deck.title
-          });
+          if (!state.reviewOnly || card.needsReview) {
+            cards.push({
+              deckId: deck.id,
+              deckTitle: deck.title,
+              sourceKey: deck.sourceKey,
+              card: card
+            });
+          }
         });
       });
 
@@ -595,17 +842,17 @@
       return state.activeCards.length ? state.activeCards[state.cardIndex] : null;
     }
 
-    function currentDeckLabel(card) {
-      if (!card) {
+    function currentDeckLabel(cardItem) {
+      if (!cardItem) {
         return '';
       }
 
       if (state.sourceValue === ALL_DECKS_VALUE && state.decks.length > 1) {
-        return card.deckTitle;
+        return cardItem.deckTitle;
       }
 
       const decks = selectedDecks();
-      return decks.length ? decks[0].title : card.deckTitle;
+      return decks.length ? decks[0].title : cardItem.deckTitle;
     }
 
     function suppressGhostClick() {
@@ -619,34 +866,81 @@
       }, 450);
     }
 
+    function updateEmptyStateText() {
+      if (!state.decks.length) {
+        emptyState.textContent = 'No cards loaded.';
+        return;
+      }
+
+      if (state.reviewOnly) {
+        emptyState.textContent = 'No cards marked for review.';
+        return;
+      }
+
+      emptyState.textContent = 'No cards available.';
+    }
+
+    function uniqueSourceKeysFromDecks(decks) {
+      return Array.from(new Set(decks.map(function(deck) {
+        return deck.sourceKey;
+      }).filter(Boolean)));
+    }
+
+    function saveableSourceKeysForCurrentSelection() {
+      return uniqueSourceKeysFromDecks(selectedDecks());
+    }
+
+    function currentSelectionHasDirtyState() {
+      return saveableSourceKeysForCurrentSelection().some(function(sourceKey) {
+        return state.dirtySourceKeys.has(sourceKey);
+      });
+    }
+
     function render() {
       const hasCards = state.activeCards.length > 0;
-      const card = currentCard();
+      const cardItem = currentCard();
+      const hasDecks = state.decks.length > 0;
+      const saveableSourceKeys = saveableSourceKeysForCurrentSelection();
+      const canSave = hasDecks && saveableSourceKeys.length === 1;
 
+      updateEmptyStateText();
       emptyState.hidden = hasCards;
       studyArea.hidden = !hasCards;
 
-      const hasDecks = state.decks.length > 0;
       deckSelect.disabled = !hasDecks;
+      saveStateButton.disabled = !canSave;
+      saveStateButton.classList.toggle('primary', canSave && currentSelectionHasDirtyState());
       shuffleButton.disabled = !hasCards;
       clearButton.disabled = !hasDecks;
       prevButton.disabled = !hasCards;
       flipButton.disabled = !hasCards;
       nextButton.disabled = !hasCards;
       cardButton.disabled = !hasCards;
+      reviewToggleButton.disabled = !hasCards;
 
-      if (!hasCards || !card) {
+      if (!hasCards || !cardItem) {
         deckName.textContent = '';
         cardCounter.textContent = '';
         sideLabel.textContent = 'Front';
         cardText.textContent = '';
+        reviewToggleButton.textContent = 'Review';
+        reviewToggleButton.classList.remove('primary');
+        reviewToggleButton.classList.remove('active');
+        reviewToggleButton.setAttribute('aria-pressed', 'false');
         return;
       }
 
-      deckName.textContent = currentDeckLabel(card);
+      deckName.textContent = currentDeckLabel(cardItem);
       cardCounter.textContent = (state.cardIndex + 1) + ' / ' + state.activeCards.length;
       sideLabel.textContent = state.showingFront ? 'Front' : 'Back';
-      cardText.textContent = state.showingFront ? card.front : card.back;
+      if (cardItem.card.needsReview) {
+        sideLabel.textContent += ' - Review';
+      }
+      cardText.textContent = state.showingFront ? cardItem.card.front : cardItem.card.back;
+      reviewToggleButton.textContent = 'Review';
+      reviewToggleButton.classList.toggle('primary', Boolean(cardItem.card.needsReview));
+      reviewToggleButton.classList.toggle('active', Boolean(cardItem.card.needsReview));
+      reviewToggleButton.setAttribute('aria-pressed', cardItem.card.needsReview ? 'true' : 'false');
     }
 
     function changeCard(delta) {
@@ -669,15 +963,104 @@
       render();
     }
 
+    function toggleCurrentReview() {
+      const cardItem = currentCard();
+      if (!cardItem) {
+        return;
+      }
+
+      const previousIndex = state.cardIndex;
+      cardItem.card.needsReview = !cardItem.card.needsReview;
+      state.dirtySourceKeys.add(cardItem.sourceKey);
+
+      if (state.reviewOnly && !cardItem.card.needsReview) {
+        rebuildActiveCards(false);
+        if (state.activeCards.length) {
+          state.cardIndex = Math.min(previousIndex, state.activeCards.length - 1);
+        }
+      }
+
+      render();
+    }
+
     function clearDecks() {
       state.decks = [];
       state.sourceValue = ALL_DECKS_VALUE;
       state.activeCards = [];
       state.cardIndex = 0;
       state.showingFront = true;
+      state.reviewOnly = false;
+      state.dirtySourceKeys.clear();
       deckInput.value = '';
       rebuildDeckSelect();
       setMessage('');
+      render();
+    }
+
+    function downloadJson(filename, payload) {
+      const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(function() {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    }
+
+    function saveCurrentReviewState() {
+      const sourceKeys = saveableSourceKeysForCurrentSelection();
+      if (sourceKeys.length !== 1) {
+        setMessage('Select a single deck before saving review state.', true);
+        return;
+      }
+
+      const sourceKey = sourceKeys[0];
+      const sourceDecks = state.decks.filter(function(deck) {
+        return deck.sourceKey === sourceKey;
+      });
+
+      if (!sourceDecks.length) {
+        setMessage('No deck available to save.', true);
+        return;
+      }
+
+      const payload = buildReviewStatePayloadForSource(sourceKey);
+      if (!payload) {
+        setMessage('Could not build review state.', true);
+        return;
+      }
+
+      const filename = sourceDecks[0].reviewStateName || makeReviewStateFileName(sourceDecks[0].sourceName);
+      downloadJson(filename, payload);
+      state.dirtySourceKeys.delete(sourceKey);
+      setMessage('Saved ' + filename + '.', false);
+      render();
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) {
+        const error = new Error('HTTP ' + response.status);
+        error.status = response.status;
+        throw error;
+      }
+      return response.json();
+    }
+
+    function mergeLoadedDecks(addedDecks) {
+      if (!addedDecks.length) {
+        return;
+      }
+
+      state.decks = state.decks.concat(addedDecks);
+      state.sourceValue = state.decks.length > 1 ? ALL_DECKS_VALUE : state.decks[0].id;
+      rebuildDeckSelect();
+      chooseStudyModeForCurrentSelection();
+      rebuildActiveCards(false);
       render();
     }
 
@@ -687,43 +1070,153 @@
         return;
       }
 
+      const parsedDeckFiles = [];
+      const reviewStateMap = new Map();
       const addedDecks = [];
       const errors = [];
+      let appliedExistingState = false;
 
       for (const file of files) {
         try {
           const text = await readFileAsText(file);
           const parsed = JSON.parse(text);
-          const decks = extractDecks(parsed, file.name);
 
-          if (!decks.length) {
-            errors.push(file.name + ': no valid cards found');
+          if (isReviewStateFilename(file.name)) {
+            const reviewState = parseReviewStatePayload(parsed);
+            if (!reviewState) {
+              errors.push(file.name + ': invalid review state file');
+              continue;
+            }
+            reviewStateMap.set(stripReviewStateSuffix(file.name), reviewState);
             continue;
           }
 
-          addedDecks.push.apply(addedDecks, decks);
+          parsedDeckFiles.push({
+            file: file,
+            parsed: parsed
+          });
         } catch (error) {
           errors.push(file.name + ': ' + (error && error.message ? error.message : 'Invalid JSON'));
         }
       }
 
+      parsedDeckFiles.forEach(function(entry) {
+        const sourceMeta = makeSourceMeta('local', entry.file.name, '');
+        const decks = extractDecks(entry.parsed, sourceMeta);
+
+        if (!decks.length) {
+          errors.push(entry.file.name + ': no valid cards found');
+          return;
+        }
+
+        const pairedState = reviewStateMap.get(stripJsonSuffix(entry.file.name));
+        if (pairedState) {
+          applyReviewStateBundleToDecks(decks, pairedState);
+          reviewStateMap.delete(stripJsonSuffix(entry.file.name));
+        }
+
+        addedDecks.push.apply(addedDecks, decks);
+      });
+
+      reviewStateMap.forEach(function(reviewState, baseName) {
+        const matchingDecks = state.decks.filter(function(deck) {
+          return stripJsonSuffix(deck.sourceName) === baseName;
+        });
+
+        if (!matchingDecks.length) {
+          errors.push(baseName + REVIEW_STATE_SUFFIX + ': no matching deck file selected');
+          return;
+        }
+
+        if (applyReviewStateBundleToDecks(matchingDecks, reviewState)) {
+          matchingDecks.forEach(function(deck) {
+            state.dirtySourceKeys.delete(deck.sourceKey);
+          });
+          appliedExistingState = true;
+        }
+      });
+
       if (addedDecks.length) {
-        state.decks = state.decks.concat(addedDecks);
-        state.sourceValue = state.decks.length > 1 ? ALL_DECKS_VALUE : state.decks[0].id;
-        rebuildDeckSelect();
+        mergeLoadedDecks(addedDecks);
+      } else if (appliedExistingState) {
+        chooseStudyModeForCurrentSelection();
         rebuildActiveCards(false);
         render();
       }
 
-      if (addedDecks.length && errors.length) {
-        setMessage('Loaded ' + addedDecks.length + ' deck' + (addedDecks.length === 1 ? '' : 's') + '. ' + errors.join(' · '), true);
-      } else if (errors.length) {
+      if (errors.length) {
         setMessage(errors.join(' · '), true);
-      } else {
-        setMessage('');
+      } else if (addedDecks.length || appliedExistingState) {
+        setMessage('', false);
       }
 
       deckInput.value = '';
+    }
+
+    function getDeckUrlsFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const values = params.getAll('deck');
+      const urls = [];
+
+      values.forEach(function(value) {
+        String(value || '').split(',').forEach(function(part) {
+          const trimmed = part.trim();
+          if (trimmed) {
+            urls.push(trimmed);
+          }
+        });
+      });
+
+      return urls;
+    }
+
+    async function loadHostedDecksFromQuery() {
+      const deckUrls = getDeckUrlsFromQuery();
+      if (!deckUrls.length) {
+        return;
+      }
+
+      const addedDecks = [];
+      const errors = [];
+
+      for (const rawUrl of deckUrls) {
+        let sourceMeta = null;
+        try {
+          const resolvedUrl = new URL(rawUrl, window.location.href).toString();
+          sourceMeta = makeSourceMeta('remote', getUrlBasename(resolvedUrl), resolvedUrl);
+          const payload = await fetchJson(sourceMeta.sourceUrl);
+          const decks = extractDecks(payload, sourceMeta);
+
+          if (!decks.length) {
+            errors.push(sourceMeta.sourceName + ': no valid cards found');
+            continue;
+          }
+
+          if (sourceMeta.reviewStateUrl) {
+            try {
+              const reviewPayload = await fetchJson(sourceMeta.reviewStateUrl);
+              applyReviewStateBundleToDecks(decks, reviewPayload);
+            } catch (error) {
+              if (!error || error.status !== 404) {
+                errors.push(sourceMeta.reviewStateName + ': ' + (error && error.message ? error.message : 'Could not load review state'));
+              }
+            }
+          }
+
+          addedDecks.push.apply(addedDecks, decks);
+        } catch (error) {
+          const label = sourceMeta ? sourceMeta.sourceName : rawUrl;
+          errors.push(label + ': ' + (error && error.message ? error.message : 'Could not load deck'));
+        }
+      }
+
+      if (addedDecks.length) {
+        mergeLoadedDecks(addedDecks);
+      }
+
+      if (errors.length) {
+        setMessage(errors.join(' · '), true);
+      }
     }
 
     deckInput.addEventListener('change', function(event) {
@@ -732,8 +1225,13 @@
 
     deckSelect.addEventListener('change', function(event) {
       state.sourceValue = event.target.value || ALL_DECKS_VALUE;
+      chooseStudyModeForCurrentSelection();
       rebuildActiveCards(false);
       render();
+    });
+
+    saveStateButton.addEventListener('click', function() {
+      saveCurrentReviewState();
     });
 
     shuffleButton.addEventListener('click', function() {
@@ -745,6 +1243,9 @@
     prevButton.addEventListener('click', function() { changeCard(-1); });
     nextButton.addEventListener('click', function() { changeCard(1); });
     flipButton.addEventListener('click', flipCard);
+    reviewToggleButton.addEventListener('click', function() {
+      toggleCurrentReview();
+    });
 
     cardButton.addEventListener('click', function() {
       if (state.suppressNextClick) {
@@ -823,11 +1324,18 @@
       } else if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
         flipCard();
+      } else if (event.key === 'r' || event.key === 'R') {
+        event.preventDefault();
+        toggleCurrentReview();
+      } else if (event.key === 's' || event.key === 'S') {
+        event.preventDefault();
+        saveCurrentReviewState();
       }
     });
 
     rebuildDeckSelect();
     render();
+    loadHostedDecksFromQuery();
   </script>
 </body>
 </html>
