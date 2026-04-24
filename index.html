@@ -409,6 +409,7 @@
       cardIndex: 0,
       showingFront: true,
       reviewOnly: false,
+      reviewSessionKeys: null,
       touchStartX: null,
       touchStartY: null,
       suppressNextClick: false,
@@ -808,21 +809,46 @@
       });
     }
 
+    function makeReviewSessionKey(deck, card) {
+      return deck.id + '\u241f' + card.cardKey;
+    }
+
+    function captureReviewSessionKeys(decks) {
+      const keys = new Set();
+      decks.forEach(function(deck) {
+        deck.cards.forEach(function(card) {
+          if (card.needsReview) {
+            keys.add(makeReviewSessionKey(deck, card));
+          }
+        });
+      });
+      return keys;
+    }
+
     function chooseStudyModeForCurrentSelection() {
       const decks = selectedDecks();
+      state.reviewSessionKeys = null;
+
       if (!decks.length || !hasAnyReviewCards(decks)) {
         state.reviewOnly = false;
         return;
       }
 
       state.reviewOnly = window.confirm('Study only cards marked for review?\n\nOK = only review cards\nCancel = all cards');
+      if (state.reviewOnly) {
+        state.reviewSessionKeys = captureReviewSessionKeys(decks);
+      }
     }
 
     function rebuildActiveCards(shouldShuffle) {
       const cards = [];
       selectedDecks().forEach(function(deck) {
         deck.cards.forEach(function(card) {
-          if (!state.reviewOnly || card.needsReview) {
+          const includeCard = !state.reviewOnly
+            || !state.reviewSessionKeys
+            || state.reviewSessionKeys.has(makeReviewSessionKey(deck, card));
+
+          if (includeCard) {
             cards.push({
               deckId: deck.id,
               deckTitle: deck.title,
@@ -969,17 +995,8 @@
         return;
       }
 
-      const previousIndex = state.cardIndex;
       cardItem.card.needsReview = !cardItem.card.needsReview;
       state.dirtySourceKeys.add(cardItem.sourceKey);
-
-      if (state.reviewOnly && !cardItem.card.needsReview) {
-        rebuildActiveCards(false);
-        if (state.activeCards.length) {
-          state.cardIndex = Math.min(previousIndex, state.activeCards.length - 1);
-        }
-      }
-
       render();
     }
 
@@ -990,6 +1007,7 @@
       state.cardIndex = 0;
       state.showingFront = true;
       state.reviewOnly = false;
+      state.reviewSessionKeys = null;
       state.dirtySourceKeys.clear();
       deckInput.value = '';
       rebuildDeckSelect();
