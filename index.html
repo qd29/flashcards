@@ -591,6 +591,7 @@
         grid-template-columns: minmax(0, 1fr);
       }
 
+      .app.study-mode #statusButton,
       .app.study-mode #saveNowButton,
       .app.study-mode #homeButton {
         display: none;
@@ -598,25 +599,31 @@
 
       .app.study-mode .study-layout {
         display: grid;
-        grid-template-columns: 80px minmax(0, 1fr) 96px;
-        gap: 8px;
+        grid-template-columns: 72px minmax(0, 1fr) 88px;
+        gap: 6px;
         align-items: stretch;
       }
 
       .app.study-mode .study-side {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
         min-height: 0;
       }
 
+      .app.study-mode .study-side .status-button,
       .app.study-mode .study-side button {
         min-height: 0;
         flex: 1 1 0;
-        padding: 8px 6px;
-        font-size: 0.82rem;
-        line-height: 1.12;
+        padding: 6px 4px;
+        font-size: 0.74rem;
+        line-height: 1.08;
         white-space: normal;
+      }
+
+      .app.study-mode .study-side .status-button {
+        display: inline-flex;
+        box-shadow: none;
       }
 
       .app.study-mode .study-main {
@@ -630,33 +637,41 @@
 
       .app.study-mode .meta,
       .app.study-mode .meta-secondary {
-        gap: 6px;
+        gap: 4px;
       }
 
       .app.study-mode .meta .title {
-        font-size: 0.94rem;
+        font-size: 0.88rem;
       }
 
       .app.study-mode .meta .counter,
       .app.study-mode .meta-secondary span {
-        font-size: 0.84rem;
+        font-size: 0.78rem;
       }
 
       .app.study-mode .card {
-        padding: 10px;
-        border-radius: 20px;
+        padding: 8px;
+        border-radius: 18px;
       }
 
       .app.study-mode .card-head {
-        gap: 8px;
+        gap: 6px;
+      }
+
+      .app.study-mode .side-label,
+      .app.study-mode .stage-pill {
+        min-height: 26px;
+        padding: 0 9px;
+        font-size: 0.68rem;
       }
 
       .app.study-mode .card-text-wrap {
-        padding: 6px 4px 0;
+        padding: 4px 2px 0;
       }
 
       .app.study-mode .card-text {
-        font-size: clamp(1.25rem, 4.9vw, 2.2rem);
+        font-size: clamp(1.05rem, 3.7vw, 1.7rem);
+        line-height: 1.14;
       }
     }
   </style>
@@ -692,6 +707,7 @@
       <section id="studyPage" class="study-page" hidden>
         <div class="study-layout">
           <aside class="study-side study-side-left" aria-label="Session actions">
+            <button id="sideStatusButton" class="status-button" type="button">Not connected</button>
             <button id="sideSaveNowButton" type="button">Save</button>
             <button id="sideHomeButton" type="button">Home</button>
           </aside>
@@ -849,6 +865,7 @@
       const prevButton = document.getElementById('prevButton');
       const flipButton = document.getElementById('flipButton');
       const nextButton = document.getElementById('nextButton');
+      const sideStatusButton = document.getElementById('sideStatusButton');
       const sideSaveNowButton = document.getElementById('sideSaveNowButton');
       const sideHomeButton = document.getElementById('sideHomeButton');
       const sideNeedsReviewButton = document.getElementById('sideNeedsReviewButton');
@@ -1051,15 +1068,17 @@
       }
 
       function setSaveStatus(text, variant) {
-        statusButton.textContent = text;
-        statusButton.classList.remove('success', 'warning', 'error');
-        if (variant === 'success') {
-          statusButton.classList.add('success');
-        } else if (variant === 'warning') {
-          statusButton.classList.add('warning');
-        } else if (variant === 'error') {
-          statusButton.classList.add('error');
-        }
+        [statusButton, sideStatusButton].forEach(function(button) {
+          button.textContent = text;
+          button.classList.remove('success', 'warning', 'error');
+          if (variant === 'success') {
+            button.classList.add('success');
+          } else if (variant === 'warning') {
+            button.classList.add('warning');
+          } else if (variant === 'error') {
+            button.classList.add('error');
+          }
+        });
       }
 
       function setUiEnabled(enabled) {
@@ -1854,6 +1873,9 @@
       }
 
       statusButton.addEventListener('click', function() {
+        openAuthModal('');
+      });
+      sideStatusButton.addEventListener('click', function() {
         openAuthModal('');
       });
 
