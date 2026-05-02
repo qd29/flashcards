@@ -233,35 +233,6 @@
       overflow: hidden;
     }
 
-    .study-layout {
-      min-width: 0;
-      min-height: 0;
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      gap: var(--gap);
-    }
-
-    .study-main {
-      min-width: 0;
-      min-height: 0;
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      gap: var(--gap);
-      overflow: hidden;
-    }
-
-    .study-side {
-      display: none;
-      min-width: 0;
-      min-height: 0;
-    }
-
-    .study-side button {
-      min-height: var(--controls-height);
-    }
-
     .meta,
     .meta-secondary {
       min-width: 0;
@@ -571,109 +542,6 @@
         font-size: clamp(1.45rem, 6.1vw, 2.6rem);
       }
     }
-
-
-    @media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
-      :root {
-        --gap: 8px;
-        --button-height: 40px;
-        --controls-height: 42px;
-      }
-
-      .app {
-        padding-top: max(8px, env(safe-area-inset-top));
-        padding-right: max(8px, env(safe-area-inset-right));
-        padding-bottom: max(8px, env(safe-area-inset-bottom));
-        padding-left: max(8px, env(safe-area-inset-left));
-      }
-
-      .app.study-mode .topbar {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .app.study-mode #statusButton,
-      .app.study-mode #saveNowButton,
-      .app.study-mode #homeButton {
-        display: none;
-      }
-
-      .app.study-mode .study-layout {
-        display: grid;
-        grid-template-columns: 72px minmax(0, 1fr) 88px;
-        gap: 6px;
-        align-items: stretch;
-      }
-
-      .app.study-mode .study-side {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        min-height: 0;
-      }
-
-      .app.study-mode .study-side .status-button,
-      .app.study-mode .study-side button {
-        min-height: 0;
-        flex: 1 1 0;
-        padding: 6px 4px;
-        font-size: 0.74rem;
-        line-height: 1.08;
-        white-space: normal;
-      }
-
-      .app.study-mode .study-side .status-button {
-        display: inline-flex;
-        box-shadow: none;
-      }
-
-      .app.study-mode .study-main {
-        min-height: 0;
-      }
-
-      .app.study-mode .study-actions,
-      .app.study-mode .controls {
-        display: none;
-      }
-
-      .app.study-mode .meta,
-      .app.study-mode .meta-secondary {
-        gap: 4px;
-      }
-
-      .app.study-mode .meta .title {
-        font-size: 0.88rem;
-      }
-
-      .app.study-mode .meta .counter,
-      .app.study-mode .meta-secondary span {
-        font-size: 0.78rem;
-      }
-
-      .app.study-mode .card {
-        padding: 8px;
-        border-radius: 18px;
-      }
-
-      .app.study-mode .card-head {
-        gap: 6px;
-      }
-
-      .app.study-mode .side-label,
-      .app.study-mode .stage-pill {
-        min-height: 26px;
-        padding: 0 9px;
-        font-size: 0.68rem;
-      }
-
-      .app.study-mode .card-text-wrap {
-        padding: 4px 2px 0;
-      }
-
-      .app.study-mode .card-text {
-        font-size: clamp(1.05rem, 3.7vw, 1.7rem);
-        line-height: 1.14;
-      }
-    }
   </style>
 </head>
 <body>
@@ -705,42 +573,24 @@
       </section>
 
       <section id="studyPage" class="study-page" hidden>
-        <div class="study-layout">
-          <aside class="study-side study-side-left" aria-label="Session actions">
-            <button id="sideStatusButton" class="status-button" type="button">Not connected</button>
-            <button id="sideSaveNowButton" type="button">Save</button>
-            <button id="sideHomeButton" type="button">Home</button>
-          </aside>
-
-          <div class="study-main">
-            <div class="meta">
-              <span id="sessionTitle" class="title"></span>
-              <span id="sessionCounter" class="counter"></span>
-            </div>
-            <div class="meta-secondary">
-              <span id="cardDeckName"></span>
-              <span id="cardDueInfo"></span>
-            </div>
-
-            <button id="cardButton" class="card" type="button" aria-label="Flashcard">
-              <div class="card-head">
-                <div id="sideLabel" class="side-label">Front</div>
-                <div id="stageLabel" class="stage-pill">Day 0</div>
-              </div>
-              <div class="card-text-wrap">
-                <div id="cardText" class="card-text"></div>
-              </div>
-            </button>
-          </div>
-
-          <aside class="study-side study-side-right" aria-label="Card actions">
-            <button id="sideNeedsReviewButton" type="button">Needs Review</button>
-            <button id="sideForgotButton" class="warning" type="button">Forgotten</button>
-            <button id="sidePrevButton" type="button">Prev</button>
-            <button id="sideFlipButton" class="primary" type="button">Flip</button>
-            <button id="sideNextButton" type="button">Next</button>
-          </aside>
+        <div class="meta">
+          <span id="sessionTitle" class="title"></span>
+          <span id="sessionCounter" class="counter"></span>
         </div>
+        <div class="meta-secondary">
+          <span id="cardDeckName"></span>
+          <span id="cardDueInfo"></span>
+        </div>
+
+        <button id="cardButton" class="card" type="button" aria-label="Flashcard">
+          <div class="card-head">
+            <div id="sideLabel" class="side-label">Front</div>
+            <div id="stageLabel" class="stage-pill">Day 0</div>
+          </div>
+          <div class="card-text-wrap">
+            <div id="cardText" class="card-text"></div>
+          </div>
+        </button>
 
         <div class="study-actions">
           <button id="needsReviewButton" type="button">Needs Review</button>
@@ -798,7 +648,7 @@
         statePath: 'state/review-state.json',
         rememberPatKey: 'flashcard-bank.pat',
         rememberFlagKey: 'flashcard-bank.rememberPat',
-        autosaveDelayMs: 3000,
+        autosaveDelayMs: 15000,
         rolloverHour: 4,
         maxStage: 7
       };
@@ -840,7 +690,6 @@
         }
       };
 
-      const appRoot = document.querySelector('.app');
       const statusButton = document.getElementById('statusButton');
       const saveNowButton = document.getElementById('saveNowButton');
       const homeButton = document.getElementById('homeButton');
@@ -865,14 +714,6 @@
       const prevButton = document.getElementById('prevButton');
       const flipButton = document.getElementById('flipButton');
       const nextButton = document.getElementById('nextButton');
-      const sideStatusButton = document.getElementById('sideStatusButton');
-      const sideSaveNowButton = document.getElementById('sideSaveNowButton');
-      const sideHomeButton = document.getElementById('sideHomeButton');
-      const sideNeedsReviewButton = document.getElementById('sideNeedsReviewButton');
-      const sideForgotButton = document.getElementById('sideForgotButton');
-      const sidePrevButton = document.getElementById('sidePrevButton');
-      const sideFlipButton = document.getElementById('sideFlipButton');
-      const sideNextButton = document.getElementById('sideNextButton');
       const authModal = document.getElementById('authModal');
       const patInput = document.getElementById('patInput');
       const rememberPatCheck = document.getElementById('rememberPatCheck');
@@ -932,11 +773,11 @@
         switch (stage) {
           case 0: return 0;
           case 1: return 1;
-          case 2: return 2;
-          case 3: return 4;
-          case 4: return 7;
-          case 5: return 15;
-          case 6: return 30;
+          case 2: return 1;
+          case 3: return 2;
+          case 4: return 3;
+          case 5: return 8;
+          case 6: return 15;
           default: return 15;
         }
       }
@@ -1068,24 +909,19 @@
       }
 
       function setSaveStatus(text, variant) {
-        [statusButton, sideStatusButton].forEach(function(button) {
-          button.textContent = text;
-          button.classList.remove('success', 'warning', 'error');
-          if (variant === 'success') {
-            button.classList.add('success');
-          } else if (variant === 'warning') {
-            button.classList.add('warning');
-          } else if (variant === 'error') {
-            button.classList.add('error');
-          }
-        });
+        statusButton.textContent = text;
+        statusButton.classList.remove('success', 'warning', 'error');
+        if (variant === 'success') {
+          statusButton.classList.add('success');
+        } else if (variant === 'warning') {
+          statusButton.classList.add('warning');
+        } else if (variant === 'error') {
+          statusButton.classList.add('error');
+        }
       }
 
       function setUiEnabled(enabled) {
-        const disconnected = !state.connected || !enabled;
-        saveNowButton.disabled = disconnected;
-        sideSaveNowButton.disabled = disconnected;
-        sideHomeButton.disabled = !enabled;
+        saveNowButton.disabled = !state.connected || !enabled;
         studyDueButton.disabled = !state.connected || !state.decks.length || !enabled;
         studyReviewButton.disabled = !state.connected || !state.decks.length || !enabled;
         studyDeckButton.disabled = !state.connected || !state.decks.length || !enabled;
@@ -1095,7 +931,6 @@
         state.activePage = name;
         homePage.hidden = name !== 'home';
         studyPage.hidden = name !== 'study';
-        appRoot.classList.toggle('study-mode', name === 'study');
       }
 
       function openAuthModal(errorText) {
@@ -1545,10 +1380,6 @@
         return String(entry.dueOn || today) <= today;
       }
 
-      function canCountRememberedToday(entry) {
-        return isDue(entry);
-      }
-
       function computeCounts() {
         let due = 0;
         let review = 0;
@@ -1612,9 +1443,6 @@
           return;
         }
         const entry = ensureCardEntry(item.key);
-        const reviewLabel = entry.needsReview ? 'Unmark Review' : 'Needs Review';
-        const multipleCards = state.study.sessionCards.length > 1;
-        const forgotDisabled = state.study.showingFront;
         sessionTitle.textContent = state.study.title;
         sessionCounter.textContent = (state.study.index + 1) + ' / ' + state.study.sessionCards.length;
         cardDeckName.textContent = item.deckTitle;
@@ -1622,18 +1450,11 @@
         sideLabel.textContent = state.study.showingFront ? 'Front' : 'Back';
         stageLabel.textContent = STAGE_LABELS[clampStage(entry.stage)] || 'Day 0';
         cardText.textContent = state.study.showingFront ? item.card.front : item.card.back;
-        needsReviewButton.textContent = reviewLabel;
+        needsReviewButton.textContent = entry.needsReview ? 'Unmark Review' : 'Needs Review';
         needsReviewButton.classList.toggle('success', entry.needsReview);
-        sideNeedsReviewButton.textContent = reviewLabel;
-        sideNeedsReviewButton.classList.toggle('success', entry.needsReview);
-        forgotButton.disabled = forgotDisabled;
-        sideForgotButton.disabled = forgotDisabled;
-        prevButton.disabled = !multipleCards;
-        nextButton.disabled = !multipleCards;
-        sidePrevButton.disabled = !multipleCards;
-        sideNextButton.disabled = !multipleCards;
-        flipButton.disabled = false;
-        sideFlipButton.disabled = false;
+        forgotButton.disabled = state.study.showingFront;
+        prevButton.disabled = state.study.sessionCards.length <= 1;
+        nextButton.disabled = state.study.sessionCards.length <= 1;
       }
 
       function render() {
@@ -1714,9 +1535,6 @@
 
       function applyRemembered(item) {
         const entry = ensureCardEntry(item.key);
-        if (!canCountRememberedToday(entry)) {
-          return false;
-        }
         entry.stage = computeRememberedStage(entry.stage);
         entry.lastReviewedAt = nowIso();
         entry.lastOutcome = 'remembered';
@@ -1725,7 +1543,6 @@
         markDirty(item.key);
         refreshHomeButtons();
         scheduleAutosave();
-        return true;
       }
 
       function applyForgotten(item) {
@@ -1875,22 +1692,12 @@
       statusButton.addEventListener('click', function() {
         openAuthModal('');
       });
-      sideStatusButton.addEventListener('click', function() {
-        openAuthModal('');
-      });
 
       saveNowButton.addEventListener('click', function() {
         saveReviewState(true);
       });
-      sideSaveNowButton.addEventListener('click', function() {
-        saveReviewState(true);
-      });
 
       homeButton.addEventListener('click', function() {
-        switchPage('home');
-        render();
-      });
-      sideHomeButton.addEventListener('click', function() {
         switchPage('home');
         render();
       });
@@ -1902,15 +1709,10 @@
       });
 
       needsReviewButton.addEventListener('click', toggleNeedsReview);
-      sideNeedsReviewButton.addEventListener('click', toggleNeedsReview);
       forgotButton.addEventListener('click', forgotAction);
-      sideForgotButton.addEventListener('click', forgotAction);
       prevButton.addEventListener('click', prevAction);
-      sidePrevButton.addEventListener('click', prevAction);
       nextButton.addEventListener('click', nextAction);
-      sideNextButton.addEventListener('click', nextAction);
       flipButton.addEventListener('click', flipCard);
-      sideFlipButton.addEventListener('click', flipCard);
 
       connectButton.addEventListener('click', connectRepo);
       authCancelButton.addEventListener('click', function() {
