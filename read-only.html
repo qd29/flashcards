@@ -346,11 +346,17 @@
 
     .modal-backdrop {
       position: fixed;
-      inset: 0;
+      top: calc(0px - env(safe-area-inset-top));
+      right: calc(0px - env(safe-area-inset-right));
+      bottom: calc(0px - env(safe-area-inset-bottom));
+      left: calc(0px - env(safe-area-inset-left));
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 18px;
+      padding-top: calc(18px + env(safe-area-inset-top));
+      padding-right: calc(18px + env(safe-area-inset-right));
+      padding-bottom: calc(18px + env(safe-area-inset-bottom));
+      padding-left: calc(18px + env(safe-area-inset-left));
       background: var(--backdrop);
       z-index: 1000;
     }
@@ -464,6 +470,7 @@
     }
 
     .deck-item span {
+      flex: 1 1 auto;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -472,8 +479,11 @@
     }
 
     .deck-item small {
+      flex: 0 0 auto;
+      margin-left: auto;
       color: var(--muted);
       font-weight: 700;
+      text-align: right;
       white-space: nowrap;
     }
 
@@ -512,6 +522,173 @@
 
       .card-text {
         font-size: clamp(1.45rem, 6.1vw, 2.6rem);
+      }
+    }
+
+
+    @media (orientation: landscape) and (max-height: 520px) and (max-width: 950px) {
+      :root {
+        --gap: 7px;
+        --button-height: 36px;
+        --controls-height: 36px;
+        --card-radius: 20px;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: minmax(88px, 15vw) minmax(0, 1fr) minmax(112px, 18vw);
+        grid-template-rows: auto auto minmax(0, 1fr);
+        align-items: stretch;
+        padding-top: max(6px, env(safe-area-inset-top));
+        padding-right: max(6px, env(safe-area-inset-right));
+        padding-bottom: max(6px, env(safe-area-inset-bottom));
+        padding-left: max(6px, env(safe-area-inset-left));
+      }
+
+      button,
+      input,
+      .status-button {
+        min-height: var(--button-height);
+        padding: 0 10px;
+        border-radius: 12px;
+        font-size: 0.86rem;
+      }
+
+      .topbar {
+        grid-column: 1;
+        grid-row: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        align-self: stretch;
+        align-content: stretch;
+        gap: var(--gap);
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .topbar > button,
+      .status-button {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px;
+        white-space: normal;
+        line-height: 1.1;
+      }
+
+      .page {
+        display: contents;
+      }
+
+      .home-page {
+        grid-column: 2 / 4;
+        grid-row: 1 / -1;
+      }
+
+      .study-page {
+        display: contents;
+      }
+
+      .meta {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: start;
+        padding: 0;
+        gap: 8px;
+      }
+
+      .meta-secondary {
+        grid-column: 2;
+        grid-row: 2;
+        padding: 0;
+        gap: 8px;
+      }
+
+      .meta,
+      .meta-secondary {
+        flex-wrap: nowrap;
+      }
+
+      .meta .title,
+      #cardDeckName {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .meta .counter,
+      #cardSessionInfo {
+        flex: 0 0 auto;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: nowrap;
+      }
+
+      .meta .title {
+        font-size: 0.9rem;
+      }
+
+      .meta .counter,
+      .meta-secondary span {
+        font-size: 0.8rem;
+      }
+
+      .card {
+        grid-column: 2;
+        grid-row: 3;
+        min-height: 0;
+        padding: 10px;
+        border-radius: var(--card-radius);
+      }
+
+      .card-head {
+        gap: 6px;
+      }
+
+      .side-label,
+      .mode-pill {
+        min-height: 26px;
+        padding: 0 9px;
+        font-size: 0.66rem;
+      }
+
+      .card-text-wrap {
+        padding: 6px 4px 0;
+      }
+
+      .card-text {
+        font-size: clamp(1.45rem, 6.1vh, 2.6rem);
+        line-height: 1.16;
+      }
+
+      .controls {
+        grid-column: 3;
+        grid-row: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+        align-self: stretch;
+        align-content: stretch;
+        gap: var(--gap);
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .controls button {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        padding: 0 8px;
+        white-space: normal;
+        line-height: 1.1;
+      }
+
+      .modal-card {
+        max-height: min(calc(100dvh - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 760px);
       }
     }
   </style>
