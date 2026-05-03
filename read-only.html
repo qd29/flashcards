@@ -32,6 +32,7 @@
       --error-border: rgba(220, 38, 38, 0.16);
       --error-text: #b91c1c;
       --gap: 10px;
+      --radius: 18px;
       --card-radius: 26px;
       --button-height: 46px;
       --controls-height: 48px;
@@ -230,6 +231,35 @@
       flex-direction: column;
       gap: var(--gap);
       overflow: hidden;
+    }
+
+    .study-layout {
+      min-width: 0;
+      min-height: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+    }
+
+    .study-main {
+      min-width: 0;
+      min-height: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+      overflow: hidden;
+    }
+
+    .study-side {
+      display: none;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .study-side button {
+      min-height: var(--controls-height);
     }
 
     .meta,
@@ -526,169 +556,103 @@
     }
 
 
-    @media (orientation: landscape) and (max-height: 520px) and (max-width: 950px) {
+    @media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
       :root {
-        --gap: 7px;
-        --button-height: 36px;
-        --controls-height: 36px;
-        --card-radius: 20px;
+        --gap: 8px;
+        --button-height: 40px;
+        --controls-height: 42px;
       }
 
       .app {
-        display: grid;
-        grid-template-columns: minmax(88px, 15vw) minmax(0, 1fr) minmax(112px, 18vw);
-        grid-template-rows: auto auto minmax(0, 1fr);
-        align-items: stretch;
-        padding-top: max(6px, env(safe-area-inset-top));
-        padding-right: max(6px, env(safe-area-inset-right));
-        padding-bottom: max(6px, env(safe-area-inset-bottom));
-        padding-left: max(6px, env(safe-area-inset-left));
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-right: max(8px, env(safe-area-inset-right));
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        padding-left: max(8px, env(safe-area-inset-left));
       }
 
-      button,
-      input,
-      .status-button {
-        min-height: var(--button-height);
-        padding: 0 10px;
-        border-radius: 12px;
-        font-size: 0.86rem;
-      }
-
-      .topbar {
-        grid-column: 1;
-        grid-row: 1 / -1;
-        display: grid;
+      .app.study-mode .topbar {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: repeat(2, minmax(0, 1fr));
-        align-self: stretch;
-        align-content: stretch;
-        gap: var(--gap);
-        min-height: 0;
-        overflow: hidden;
       }
 
-      .topbar > button,
-      .status-button {
-        width: 100%;
-        height: 100%;
+      .app.study-mode #statusButton,
+      .app.study-mode #homeButton {
+        display: none;
+      }
+
+      .app.study-mode .study-layout {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr) 88px;
+        gap: 6px;
+        align-items: stretch;
+      }
+
+      .app.study-mode .study-side {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         min-height: 0;
-        min-width: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 8px;
+      }
+
+      .app.study-mode .study-side .status-button,
+      .app.study-mode .study-side button {
+        min-height: 0;
+        flex: 1 1 0;
+        padding: 6px 4px;
+        font-size: 0.74rem;
+        line-height: 1.08;
         white-space: normal;
-        line-height: 1.1;
       }
 
-      .page {
-        display: contents;
+      .app.study-mode .study-side .status-button {
+        display: inline-flex;
+        box-shadow: none;
       }
 
-      .home-page {
-        grid-column: 2 / 4;
-        grid-row: 1 / -1;
-      }
-
-      .study-page {
-        display: contents;
-      }
-
-      .meta {
-        grid-column: 2;
-        grid-row: 1;
-        align-self: start;
-        padding: 0;
-        gap: 8px;
-      }
-
-      .meta-secondary {
-        grid-column: 2;
-        grid-row: 2;
-        padding: 0;
-        gap: 8px;
-      }
-
-      .meta,
-      .meta-secondary {
-        flex-wrap: nowrap;
-      }
-
-      .meta .title,
-      #cardDeckName {
-        flex: 1 1 auto;
-        min-width: 0;
-      }
-
-      .meta .counter,
-      #cardSessionInfo {
-        flex: 0 0 auto;
-        overflow: visible;
-        text-overflow: clip;
-        white-space: nowrap;
-      }
-
-      .meta .title {
-        font-size: 0.9rem;
-      }
-
-      .meta .counter,
-      .meta-secondary span {
-        font-size: 0.8rem;
-      }
-
-      .card {
-        grid-column: 2;
-        grid-row: 3;
+      .app.study-mode .study-main {
         min-height: 0;
-        padding: 10px;
-        border-radius: var(--card-radius);
       }
 
-      .card-head {
+      .app.study-mode .controls {
+        display: none;
+      }
+
+      .app.study-mode .meta,
+      .app.study-mode .meta-secondary {
+        gap: 4px;
+      }
+
+      .app.study-mode .meta .title {
+        font-size: 0.88rem;
+      }
+
+      .app.study-mode .meta .counter,
+      .app.study-mode .meta-secondary span {
+        font-size: 0.78rem;
+      }
+
+      .app.study-mode .card {
+        padding: 8px;
+        border-radius: 18px;
+      }
+
+      .app.study-mode .card-head {
         gap: 6px;
       }
 
-      .side-label,
-      .mode-pill {
+      .app.study-mode .side-label,
+      .app.study-mode .mode-pill {
         min-height: 26px;
         padding: 0 9px;
-        font-size: 0.66rem;
+        font-size: 0.68rem;
       }
 
-      .card-text-wrap {
-        padding: 6px 4px 0;
+      .app.study-mode .card-text-wrap {
+        padding: 4px 2px 0;
       }
 
-      .card-text {
-        font-size: clamp(1.45rem, 6.1vh, 2.6rem);
-        line-height: 1.16;
-      }
-
-      .controls {
-        grid-column: 3;
-        grid-row: 1 / -1;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: repeat(3, minmax(0, 1fr));
-        align-self: stretch;
-        align-content: stretch;
-        gap: var(--gap);
-        min-height: 0;
-        overflow: hidden;
-      }
-
-      .controls button {
-        width: 100%;
-        height: 100%;
-        min-height: 0;
-        padding: 0 8px;
-        white-space: normal;
-        line-height: 1.1;
-      }
-
-      .modal-card {
-        max-height: min(calc(100dvh - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 760px);
+      .app.study-mode .card-text {
+        font-size: clamp(1.05rem, 3.7vw, 1.7rem);
+        line-height: 1.14;
       }
     }
   </style>
@@ -721,24 +685,39 @@
       </section>
 
       <section id="studyPage" class="study-page" hidden>
-        <div class="meta">
-          <span id="sessionTitle" class="title"></span>
-          <span id="sessionCounter" class="counter"></span>
-        </div>
-        <div class="meta-secondary">
-          <span id="cardDeckName"></span>
-          <span id="cardSessionInfo">Shuffled session</span>
-        </div>
+        <div class="study-layout">
+          <aside class="study-side study-side-left" aria-label="Session actions">
+            <button id="sideStatusButton" class="status-button" type="button">Not connected</button>
+            <button id="sideHomeButton" type="button">Home</button>
+          </aside>
 
-        <button id="cardButton" class="card" type="button" aria-label="Flashcard">
-          <div class="card-head">
-            <div id="sideLabel" class="side-label">Front</div>
-            <div class="mode-pill">Read only</div>
+          <div class="study-main">
+            <div class="meta">
+              <span id="sessionTitle" class="title"></span>
+              <span id="sessionCounter" class="counter"></span>
+            </div>
+            <div class="meta-secondary">
+              <span id="cardDeckName"></span>
+              <span id="cardSessionInfo">Shuffled session</span>
+            </div>
+
+            <button id="cardButton" class="card" type="button" aria-label="Flashcard">
+              <div class="card-head">
+                <div id="sideLabel" class="side-label">Front</div>
+                <div class="mode-pill">Read only</div>
+              </div>
+              <div class="card-text-wrap">
+                <div id="cardText" class="card-text"></div>
+              </div>
+            </button>
           </div>
-          <div class="card-text-wrap">
-            <div id="cardText" class="card-text"></div>
-          </div>
-        </button>
+
+          <aside class="study-side study-side-right" aria-label="Card actions">
+            <button id="sidePrevButton" type="button">Prev</button>
+            <button id="sideFlipButton" class="primary" type="button">Flip</button>
+            <button id="sideNextButton" type="button">Next</button>
+          </aside>
+        </div>
 
         <div class="controls">
           <button id="prevButton" type="button">Prev</button>
@@ -809,6 +788,7 @@
         }
       };
 
+      const appRoot = document.querySelector('.app');
       const statusButton = document.getElementById('statusButton');
       const homeButton = document.getElementById('homeButton');
       const homePage = document.getElementById('homePage');
@@ -824,6 +804,11 @@
       const prevButton = document.getElementById('prevButton');
       const flipButton = document.getElementById('flipButton');
       const nextButton = document.getElementById('nextButton');
+      const sideStatusButton = document.getElementById('sideStatusButton');
+      const sideHomeButton = document.getElementById('sideHomeButton');
+      const sidePrevButton = document.getElementById('sidePrevButton');
+      const sideFlipButton = document.getElementById('sideFlipButton');
+      const sideNextButton = document.getElementById('sideNextButton');
       const authModal = document.getElementById('authModal');
       const patInput = document.getElementById('patInput');
       const rememberPatCheck = document.getElementById('rememberPatCheck');
@@ -880,18 +865,22 @@
       }
 
       function setStatus(text, variant) {
-        statusButton.textContent = text;
-        statusButton.classList.remove('success', 'warning', 'error');
-        if (variant === 'success') {
-          statusButton.classList.add('success');
-        } else if (variant === 'warning') {
-          statusButton.classList.add('warning');
-        } else if (variant === 'error') {
-          statusButton.classList.add('error');
-        }
+        [statusButton, sideStatusButton].forEach(function(button) {
+          button.textContent = text;
+          button.classList.remove('success', 'warning', 'error');
+          if (variant === 'success') {
+            button.classList.add('success');
+          } else if (variant === 'warning') {
+            button.classList.add('warning');
+          } else if (variant === 'error') {
+            button.classList.add('error');
+          }
+        });
       }
 
       function setUiEnabled(enabled) {
+        homeButton.disabled = !enabled;
+        sideHomeButton.disabled = !enabled;
         studyDeckButton.disabled = !state.connected || !state.decks.length || !enabled;
       }
 
@@ -899,6 +888,7 @@
         state.activePage = name;
         homePage.hidden = name !== 'home';
         studyPage.hidden = name !== 'study';
+        appRoot.classList.toggle('study-mode', name === 'study');
       }
 
       function openAuthModal(errorText) {
@@ -1148,13 +1138,18 @@
           switchPage('home');
           return;
         }
+        const multipleCards = state.study.sessionCards.length > 1;
         sessionTitle.textContent = state.study.title;
         sessionCounter.textContent = (state.study.index + 1) + ' / ' + state.study.sessionCards.length;
         cardDeckName.textContent = item.deckTitle;
         sideLabel.textContent = state.study.showingFront ? 'Front' : 'Back';
         cardText.textContent = state.study.showingFront ? item.card.front : item.card.back;
-        prevButton.disabled = state.study.sessionCards.length <= 1;
-        nextButton.disabled = state.study.sessionCards.length <= 1;
+        prevButton.disabled = !multipleCards;
+        nextButton.disabled = !multipleCards;
+        sidePrevButton.disabled = !multipleCards;
+        sideNextButton.disabled = !multipleCards;
+        flipButton.disabled = false;
+        sideFlipButton.disabled = false;
       }
 
       function render() {
@@ -1299,8 +1294,15 @@
       statusButton.addEventListener('click', function() {
         openAuthModal('');
       });
+      sideStatusButton.addEventListener('click', function() {
+        openAuthModal('');
+      });
 
       homeButton.addEventListener('click', function() {
+        switchPage('home');
+        render();
+      });
+      sideHomeButton.addEventListener('click', function() {
         switchPage('home');
         render();
       });
@@ -1331,8 +1333,11 @@
       });
 
       prevButton.addEventListener('click', prevAction);
+      sidePrevButton.addEventListener('click', prevAction);
       nextButton.addEventListener('click', nextAction);
+      sideNextButton.addEventListener('click', nextAction);
       flipButton.addEventListener('click', flipCard);
+      sideFlipButton.addEventListener('click', flipCard);
 
       cardButton.addEventListener('click', function() {
         if (state.suppressNextClick) {
