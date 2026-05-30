@@ -841,6 +841,7 @@
         touchStartY: null,
         suppressNextClick: false,
         suppressClickTimer: null,
+        deckSelectionMode: 'deck',
         study: {
           mode: null,
           title: '',
@@ -890,6 +891,7 @@
       const authCancelButton = document.getElementById('authCancelButton');
       const connectButton = document.getElementById('connectButton');
       const deckModal = document.getElementById('deckModal');
+      const deckTitle = document.getElementById('deckTitle');
       const deckSummary = document.getElementById('deckSummary');
       const deckError = document.getElementById('deckError');
       const deckList = document.getElementById('deckList');
@@ -1128,39 +1130,98 @@
         setAuthError('');
       }
 
-      function openDeckModal() {
+      function countReviewCardsInDeck(deck) {
+        return deck.cards.reduce(function(total, card) {
+          return total + (ensureCardEntry(card.key).needsReview ? 1 : 0);
+        }, 0);
+      }
+
+      function createDeckChoice(value, title, countText, checked) {
+        const label = document.createElement('label');
+        label.className = 'deck-item';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = value;
+        input.checked = Boolean(checked);
+
+        const name = document.createElement('span');
+        name.textContent = title;
+
+        const count = document.createElement('small');
+        count.textContent = countText;
+
+        label.appendChild(input);
+        label.appendChild(name);
+        label.appendChild(count);
+        deckList.appendChild(label);
+        return input;
+      }
+
+      function openDeckModal(mode) {
         if (!state.connected) {
           openAuthModal('Login required.');
           return;
         }
         setDeckError('');
         deckList.innerHTML = '';
+        state.deckSelectionMode = mode === 'review' ? 'review' : 'deck';
+        const isReviewMode = state.deckSelectionMode === 'review';
         const sortedDecks = state.decks.slice().sort(function(a, b) {
           return a.title.localeCompare(b.title) || a.path.localeCompare(b.path);
         });
+
+        deckTitle.textContent = isReviewMode ? 'Choose Review Decks' : 'Choose Decks';
+        deckSummary.textContent = isReviewMode
+          ? 'Select decks to include for cards marked Needs Review, or choose All decks.'
+          : 'Select one or more decks. Sessions start shuffled.';
+
+        let allDecksInput = null;
+        if (isReviewMode) {
+          const totalReviewCards = sortedDecks.reduce(function(total, deck) {
+            return total + countReviewCardsInDeck(deck);
+          }, 0);
+          allDecksInput = createDeckChoice(
+            '__all__',
+            'All decks',
+            totalReviewCards + (totalReviewCards === 1 ? ' review card' : ' review cards'),
+            true
+          );
+        }
+
         sortedDecks.forEach(function(deck, index) {
-          const label = document.createElement('label');
-          label.className = 'deck-item';
+          const countValue = isReviewMode ? countReviewCardsInDeck(deck) : deck.cards.length;
+          const countText = isReviewMode
+            ? countValue + (countValue === 1 ? ' review card' : ' review cards')
+            : countValue + (countValue === 1 ? ' card' : ' cards');
+          const input = createDeckChoice(
+            deck.path,
+            deck.title,
+            countText,
+            !isReviewMode && (sortedDecks.length === 1 || index === 0)
+          );
 
-          const input = document.createElement('input');
-          input.type = 'checkbox';
-          input.value = deck.path;
-          if (sortedDecks.length === 1 || index === 0) {
-            input.checked = true;
+          if (isReviewMode) {
+            input.addEventListener('change', function() {
+              if (input.checked && allDecksInput) {
+                allDecksInput.checked = false;
+              }
+            });
           }
-
-          const name = document.createElement('span');
-          name.textContent = deck.title;
-
-          const count = document.createElement('small');
-          count.textContent = deck.cards.length + (deck.cards.length === 1 ? ' card' : ' cards');
-
-          label.appendChild(input);
-          label.appendChild(name);
-          label.appendChild(count);
-          deckList.appendChild(label);
         });
-        deckSummary.textContent = 'Select one or more decks. Sessions start shuffled.';
+
+        if (allDecksInput) {
+          allDecksInput.addEventListener('change', function() {
+            if (allDecksInput.checked) {
+              Array.from(deckList.querySelectorAll('input[type="checkbox"]')).forEach(function(input) {
+                if (input !== allDecksInput) {
+                  input.checked = false;
+                }
+              });
+            }
+          });
+        }
+
         deckModal.classList.add('visible');
         deckModal.setAttribute('aria-hidden', 'false');
       }
@@ -1169,6 +1230,7 @@
         deckModal.classList.remove('visible');
         deckModal.setAttribute('aria-hidden', 'true');
         setDeckError('');
+        state.deckSelectionMode = 'deck';
       }
 
       async function githubRequest(endpoint, options) {
@@ -1425,8 +1487,11 @@
         });
       }
 
-      function mergeSnapshotIntoRemote(remoteData, snapshotValues) {
+      function mergeSnapshotIntoRemote(remoteData, snapshotValues, replaceAllCards) {
         const merged = normalizeReviewState(remoteData);
+        if (replaceAllCards) {
+          merged.cards = {};
+        }
         Object.keys(snapshotValues).forEach(function(key) {
           if (snapshotValues[key]) {
             merged.cards[key] = JSON.parse(snapshotValues[key]);
@@ -1478,7 +1543,7 @@
           ? Object.keys(state.reviewState.cards)
           : Array.from(state.dirtyKeys);
 
-        if (!keysToWrite.length) {
+        if (!keysToWrite.length && !forceSaveAll) {
           setSaveStatus('Saved', 'success');
           return;
         }
@@ -1506,7 +1571,7 @@
             try {
               await waitMs(500);
               const remote = await loadReviewStateRemote();
-              const merged = mergeSnapshotIntoRemote(remote.data, snapshotValues);
+              const merged = mergeSnapshotIntoRemote(remote.data, snapshotValues, forceSaveAll);
               const savedRetry = await saveReviewStateOnce(merged, remote.sha);
               state.reviewStateSha = savedRetry.sha;
               mergeSavedRemoteIntoLocal(merged, snapshotValues);
@@ -1548,6 +1613,33 @@
           });
         });
         return cards;
+      }
+
+      function getLoadedCardKeys() {
+        const keys = new Set();
+        state.decks.forEach(function(deck) {
+          deck.cards.forEach(function(card) {
+            keys.add(card.key);
+          });
+        });
+        return keys;
+      }
+
+      function pruneReviewStateToLoadedDecks() {
+        const loadedCardKeys = getLoadedCardKeys();
+        let removedCount = 0;
+        Object.keys(state.reviewState.cards).forEach(function(key) {
+          if (!loadedCardKeys.has(key)) {
+            delete state.reviewState.cards[key];
+            state.dirtyKeys.delete(key);
+            removedCount += 1;
+          }
+        });
+        if (removedCount > 0) {
+          state.reviewState.updatedAt = nowIso();
+          setSaveStatus('Cleaned review state', 'warning');
+        }
+        return removedCount;
       }
 
       function isDue(entry) {
@@ -1679,11 +1771,28 @@
         beginStudySession('Cards Due', items);
       }
 
-      function startReviewStudy() {
-        const items = getAllCards().filter(function(item) {
-          return ensureCardEntry(item.key).needsReview;
+      function deckTitleForPath(path) {
+        const deck = state.decks.find(function(item) {
+          return item.path === path;
         });
-        beginStudySession('Cards Needing Review', items);
+        return deck ? deck.title : '';
+      }
+
+      function startReviewStudy(paths) {
+        const selectedPaths = Array.isArray(paths) && paths.length
+          ? paths
+          : state.decks.map(function(deck) {
+            return deck.path;
+          });
+        const items = getAllCards().filter(function(item) {
+          return selectedPaths.indexOf(item.deckPath) >= 0 && ensureCardEntry(item.key).needsReview;
+        });
+        const title = selectedPaths.length === state.decks.length
+          ? 'Cards Needing Review'
+          : selectedPaths.length === 1
+            ? 'Review: ' + deckTitleForPath(selectedPaths[0])
+            : 'Selected Review Decks';
+        beginStudySession(title, items);
       }
 
       function startSelectedDecks(paths) {
@@ -1812,6 +1921,7 @@
         state.dirtyKeys.clear();
         state.saveQueued = false;
         state.saveQueuedForceAll = false;
+        state.deckSelectionMode = 'deck';
         state.study = {
           mode: null,
           title: '',
@@ -1851,9 +1961,12 @@
               ensureCardEntry(card.key);
             });
           });
+          const removedReviewStateCount = pruneReviewStateToLoadedDecks();
 
           state.connected = true;
-          if (state.dirtyKeys.size > 0) {
+          if (removedReviewStateCount > 0) {
+            saveReviewState(true);
+          } else if (state.dirtyKeys.size > 0) {
             scheduleAutosave();
           } else {
             setSaveStatus('Saved', 'success');
@@ -1906,9 +2019,11 @@
       });
 
       studyDueButton.addEventListener('click', startDueStudy);
-      studyReviewButton.addEventListener('click', startReviewStudy);
+      studyReviewButton.addEventListener('click', function() {
+        openDeckModal('review');
+      });
       studyDeckButton.addEventListener('click', function() {
-        openDeckModal();
+        openDeckModal('deck');
       });
 
       needsReviewButton.addEventListener('click', toggleNeedsReview);
@@ -1932,15 +2047,28 @@
       });
 
       deckStartButton.addEventListener('click', function() {
+        const mode = state.deckSelectionMode;
         const selected = Array.from(deckList.querySelectorAll('input[type="checkbox"]:checked')).map(function(input) {
           return input.value;
         });
-        if (!selected.length) {
+        const useAllDecks = mode === 'review' && selected.indexOf('__all__') >= 0;
+        const selectedDeckPaths = useAllDecks
+          ? state.decks.map(function(deck) {
+            return deck.path;
+          })
+          : selected.filter(function(value) {
+            return value !== '__all__';
+          });
+        if (!selectedDeckPaths.length) {
           setDeckError('Choose at least one deck.');
           return;
         }
         closeDeckModal();
-        startSelectedDecks(selected);
+        if (mode === 'review') {
+          startReviewStudy(selectedDeckPaths);
+        } else {
+          startSelectedDecks(selectedDeckPaths);
+        }
       });
 
       cardButton.addEventListener('click', function() {
