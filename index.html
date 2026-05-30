@@ -1184,7 +1184,7 @@
           allDecksInput = createDeckChoice(
             '__all__',
             'All decks',
-            totalReviewCards + (totalReviewCards === 1 ? ' review card' : ' review cards'),
+            totalReviewCards + (totalReviewCards === 1 ? ' review card' : ' cards'),
             true
           );
         }
@@ -1192,7 +1192,7 @@
         sortedDecks.forEach(function(deck, index) {
           const countValue = isReviewMode ? countReviewCardsInDeck(deck) : deck.cards.length;
           const countText = isReviewMode
-            ? countValue + (countValue === 1 ? ' review card' : ' review cards')
+            ? countValue + (countValue === 1 ? ' review card' : ' cards')
             : countValue + (countValue === 1 ? ' card' : ' cards');
           const input = createDeckChoice(
             deck.path,
