@@ -703,12 +703,12 @@
           </button>
 
           <button id="studyReviewButton" class="launch-button" type="button">
-            <span>Study Review</span>
+            <span>Marked for Review</span>
             <small id="reviewButtonSubtext">0 cards</small>
           </button>
 
           <button id="studyDeckButton" class="launch-button" type="button">
-            <span>Study Deck</span>
+            <span>Study Full Deck</span>
             <small id="deckButtonSubtext">0 decks</small>
           </button>
         </div>
@@ -768,7 +768,6 @@
     <div id="authModal" class="modal-backdrop" aria-hidden="true">
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
         <h2 id="authTitle">Enter GitHub PAT</h2>
-        <p class="modal-subtle">Use a fine-grained token for the private repo.</p>
         <div id="authError" class="modal-error"></div>
         <input id="patInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="GitHub personal access token" />
         <label class="checkbox-row" for="rememberPatCheck">
@@ -785,7 +784,6 @@
     <div id="deckModal" class="modal-backdrop" aria-hidden="true">
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="deckTitle">
         <h2 id="deckTitle">Choose Decks</h2>
-        <p id="deckSummary" class="modal-subtle">Select one or more decks. Sessions start shuffled.</p>
         <div id="deckError" class="modal-error"></div>
         <div id="deckList" class="deck-list"></div>
         <div class="modal-actions">
@@ -892,7 +890,6 @@
       const connectButton = document.getElementById('connectButton');
       const deckModal = document.getElementById('deckModal');
       const deckTitle = document.getElementById('deckTitle');
-      const deckSummary = document.getElementById('deckSummary');
       const deckError = document.getElementById('deckError');
       const deckList = document.getElementById('deckList');
       const deckCancelButton = document.getElementById('deckCancelButton');
@@ -1171,10 +1168,7 @@
           return a.title.localeCompare(b.title) || a.path.localeCompare(b.path);
         });
 
-        deckTitle.textContent = isReviewMode ? 'Choose Review Decks' : 'Choose Decks';
-        deckSummary.textContent = isReviewMode
-          ? 'Select decks to include for cards marked Needs Review, or choose All decks.'
-          : 'Select one or more decks. Sessions start shuffled.';
+        deckTitle.textContent = isReviewMode ? 'Choose Marked for Review Decks' : 'Choose Decks';
 
         let allDecksInput = null;
         if (isReviewMode) {
@@ -1198,7 +1192,7 @@
             deck.path,
             deck.title,
             countText,
-            !isReviewMode && (sortedDecks.length === 1 || index === 0)
+            false
           );
 
           if (isReviewMode) {
@@ -1751,7 +1745,7 @@
           return;
         }
         if (!items.length) {
-          window.alert('No cards available for that session.');
+          window.alert('No cards available for this section.');
           switchPage('home');
           return;
         }
@@ -1787,12 +1781,7 @@
         const items = getAllCards().filter(function(item) {
           return selectedPaths.indexOf(item.deckPath) >= 0 && ensureCardEntry(item.key).needsReview;
         });
-        const title = selectedPaths.length === state.decks.length
-          ? 'Cards Needing Review'
-          : selectedPaths.length === 1
-            ? 'Review: ' + deckTitleForPath(selectedPaths[0])
-            : 'Selected Review Decks';
-        beginStudySession(title, items);
+        beginStudySession('Marked for Review', items);
       }
 
       function startSelectedDecks(paths) {
